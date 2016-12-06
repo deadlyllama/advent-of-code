@@ -38,6 +38,15 @@ struct State {
 
 const INITIAL_STATE: State = State { dir: Direction::North, pos: Position { x: 0, y: 0}};
 
+#[test]
+fn test_read_instruction() {
+    assert_eq!(read_instruction(String::from("L42")), Some(Movement{rotation: Rotation::Left, distance: 42i32}));
+    assert_eq!(read_instruction(String::from("R1")), Some(Movement{rotation: Rotation::Right, distance: 1i32}));
+    assert_eq!(read_instruction(String::from("L")), None);
+    assert_eq!(read_instruction(String::from("42")), None);
+    assert_eq!(read_instruction(String::from("L42,")), None);
+}
+
 fn read_instruction(instruction: String) -> Option<Movement> {
     let (rot_string, dist_string) = instruction.split_at(1);
     let chars = instruction.chars();
@@ -60,40 +69,25 @@ fn read_instruction(instruction: String) -> Option<Movement> {
 //}
 
 fn main() {
+    use std::io::{Error, ErrorKind};
     let mut args = env::args();
 
     let filename = args.nth(1);
-    match filename {
-        Some(filename) => {
-            println!("{}", filename);
-            let path = Path::new(&filename);
-            match File::open(path) {
-                Ok(mut file) => {
-                    let mut file_contents = String::new();
-                    match file.read_to_string(&mut file_contents) {
-                        Err(msg) => {
-                            println!("{}", msg);
-                            std::process::exit(3);
-                        }
-                        Ok(_) => {
-                            println!("File contents: {}", file_contents);
-                        }
-                    }
-                }
-                Err(msg) => {
-                    println!("{}", msg);
-                    std::process::exit(2);
-                }
-            }
+    let no_file_error = Error::new(ErrorKind::Other, "No filename supplied");
+    let contents = filename.ok_or(no_file_error).and_then(|filename| {
+        let path = Path::new(&filename);
+        File::open(path)
+    }).and_then(|mut file| {
+        let mut content_string = String::new();
+        file.read_to_string(&mut content_string).map(|x| content_string)
+    });
+
+    match contents {
+        Ok(contents) => {
+            println!("File contents: {}", contents);
         }
-        None => {
-          println!("No filename supplied");
-          std::process::exit(1);
+        Err(msg) => {
+            println!("{}", msg);
         }
     }
-    assert_eq!(read_instruction(String::from("L42")), Some(Movement{rotation: Rotation::Left, distance: 42i32}));
-    assert_eq!(read_instruction(String::from("R1")), Some(Movement{rotation: Rotation::Right, distance: 1i32}));
-    assert_eq!(read_instruction(String::from("L")), None);
-    assert_eq!(read_instruction(String::from("42")), None);
-    assert_eq!(read_instruction(String::from("L42,")), None);
 }
